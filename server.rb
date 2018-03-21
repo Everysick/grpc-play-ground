@@ -46,9 +46,35 @@ def main
   s = GRPC::RpcServer.new(interceptors: [Interceptor::LoggingInterceptor.new])
   s.add_http2_port('0.0.0.0:50051', :this_port_is_insecure)
 
+  stop_server = false
+  stop_server_cv = ConditionVariable.new
+  stop_server_mu = Mutex.new
+
+  stop_server_thread = Thread.new do
+    loop do
+      break if stop_server
+      stop_server_mu.synchronize { stop_server_cv.wait(stop_server_mu, 60) }
+    end
+    GRPC.logger.info('Shutting down ...')
+    s.stop
+  end
+
+  trap('INT') do
+    stop_server = true
+    stop_server_cv.broadcast
+  end
+
+  trap('TERM') do
+    stop_server = true
+    stop_server_cv.broadcast
+  end
+
   s.handle(GreeterService)
 
   s.run_till_terminated
+  stop_server_thread.join
+
+  GRPC.logger.info('Goodbye!')
 end
 
 main
