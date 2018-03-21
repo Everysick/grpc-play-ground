@@ -5,11 +5,10 @@ $LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
 require 'grpc'
 require 'helloworld_services_pb'
 
-def main
+def call_hello_world
   stub = Helloworld::Greeter::Stub.new('localhost:50051', :this_channel_is_insecure)
-  user = ARGV.size > 0 ?  ARGV[0] : 'world'
-  message = stub.say_hello(Helloworld::HelloRequest.new(name: user)).message
+  message = stub.say_hello(Helloworld::HelloRequest.new(name: 'world')).message
   p "Greeting: #{message}"
 end
 
-main
+call_hello_world
