@@ -12,15 +12,16 @@ require 'helloworld_services_pb'
 module ExtRunBatch
   def run_batch(*args)
     puts "Before send: #{ObjectSpace.memsize_of_all(GRPC::Core::MetadataArray)} byte"
-    super
+    res = super(*args)
     puts "After send: #{ObjectSpace.memsize_of_all(GRPC::Core::MetadataArray)} byte"
+    res
   end
 end
 
 module GRPC
   module Core
     class Call
-      include ExtRunBatch
+      prepend ExtRunBatch
     end
   end
 end
@@ -32,10 +33,17 @@ def call_gc
 end
 
 def call_hello_world
-  call_gc
-  stub = Helloworld::Greeter::Stub.new('localhost:50051', :this_channel_is_insecure)
-  message = stub.say_hello(Helloworld::HelloRequest.new(name: 'world'), metadata: { header: 'header' }).message
-  p "Greeting: #{message}"
+  loop do
+    # call_gc
+
+    sleep(0.5)
+
+    stub = Helloworld::Greeter::Stub.new('localhost:50051', :this_channel_is_insecure)
+    message = stub.say_hello(Helloworld::HelloRequest.new(name: 'world'), metadata: { header: 'header' }).message
+    p "Greeting: #{message}"
+
+    sleep(0.5)
+  end
 end
 
 call_hello_world
