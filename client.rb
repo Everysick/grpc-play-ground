@@ -2,48 +2,26 @@ this_dir = File.expand_path(File.dirname(__FILE__))
 lib_dir = File.join(this_dir, 'lib')
 $LOAD_PATH.unshift(lib_dir) unless $LOAD_PATH.include?(lib_dir)
 
-require 'objspace'
-
 require 'pry'
 
 require 'grpc'
 require 'helloworld_services_pb'
 
-module ExtRunBatch
-  def run_batch(*args)
-    puts "Before send: #{ObjectSpace.memsize_of_all(GRPC::Core::MetadataArray)} byte"
-    res = super(*args)
-    puts "After send: #{ObjectSpace.memsize_of_all(GRPC::Core::MetadataArray)} byte"
-    res
-  end
-end
+# simulate #15314
+def call_10000
+  stub = Helloworld::Greeter::Stub.new('localhost:50051', :this_channel_is_insecure)
+  request = Helloworld::HelloRequest.new(name: 'world')
+  count = 0
 
-module GRPC
-  module Core
-    class Call
-      prepend ExtRunBatch
+  10000.times do
+    begin
+      stub.say_hello(request, deadline: Time.now.to_f + 0)
+      count += 1
+    rescue
     end
   end
+
+  puts count
 end
 
-def call_gc
-  puts "Running Garbage Collection..."
-  GC.start
-  puts "Ended Garbage Collection"
-end
-
-def call_hello_world
-  loop do
-    # call_gc
-
-    sleep(0.5)
-
-    stub = Helloworld::Greeter::Stub.new('localhost:50051', :this_channel_is_insecure)
-    message = stub.say_hello(Helloworld::HelloRequest.new(name: 'world'), metadata: { header: 'header' }).message
-    p "Greeting: #{message}"
-
-    sleep(0.5)
-  end
-end
-
-call_hello_world
+call_10000
