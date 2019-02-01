@@ -7,21 +7,29 @@ require 'pry'
 require 'grpc'
 require 'helloworld_services_pb'
 
-# simulate #15314
-def call_10000
-  stub = Helloworld::Greeter::Stub.new('localhost:50051', :this_channel_is_insecure)
-  request = Helloworld::HelloRequest.new(name: 'world')
-  count = 0
+require 'logger'
 
-  10000.times do
-    begin
-      stub.say_hello(request, deadline: Time.now.to_f + 0)
-      count += 1
-    rescue
-    end
+host = ENV.fetch('HOST') || '0.0.0.0'
+port = ENV.fetch('PORT') || '50051'
+
+logger = Logger.new('/proc/1/fd/1')
+logger.level = Logger::INFO
+logger.info("Target server: #{host}:#{port}")
+
+loop do
+  stub = Helloworld::Greeter::Stub.new(
+    "#{host}:#{port}",
+    :this_channel_is_insecure,
+  )
+  request = Helloworld::HelloRequest.new(name: 'world')
+
+  begin
+    logger.info('Sending request')
+    res = stub.say_hello(request, deadline: Time.now.to_f + 4) # Too long time
+    logger.info("Response: #{res}")
+  rescue => e
+    logger.warn("Detect error: #{e}")
   end
 
-  puts count
+  sleep(5)
 end
-
-call_10000

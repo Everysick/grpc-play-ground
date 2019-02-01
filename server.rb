@@ -38,12 +38,15 @@ end
 
 class GreeterService < Helloworld::Greeter::Service
   def say_hello(hello_req, _unused_call)
+    sleep(3) # wait to occur request timeout
     Helloworld::HelloReply.new(message: "Hello #{hello_req.name}")
   end
 end
 
 def main
-  s = GRPC::RpcServer.new(interceptors: [Interceptor::LoggingInterceptor.new])
+  s = GRPC::RpcServer.new(
+    interceptors: [Interceptor::LoggingInterceptor.new],
+  )
   s.add_http2_port('0.0.0.0:50051', :this_port_is_insecure)
 
   stop_server = false
